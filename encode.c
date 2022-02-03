@@ -38,11 +38,9 @@ uint get_image_size_for_bmp(FILE *fptr_image)
 
     // Read the width (an int)
     fread(&width, sizeof(int), 1, fptr_image);
-    printf("width = %u\n", width);
 
     // Read the height (an int)
     fread(&height, sizeof(int), 1, fptr_image);
-    printf("height = %u\n", height);
 
     // Return image capacity
     return width * height * 3;
@@ -98,6 +96,7 @@ uint get_file_size(FILE *fptr){
     return ftell(fptr);
 }
 
+//function to check if encoding is possible or not
 Status check_capacity(EncodeInfo *encInfo){
     encInfo->image_capacity = get_image_size_for_bmp(encInfo->fptr_src_image);
     encInfo->size_secret_file = get_file_size(encInfo->fptr_secret);
@@ -107,7 +106,7 @@ Status check_capacity(EncodeInfo *encInfo){
         return e_failure;
     }
 }
-
+//copy the first 54 bytes of image file
 Status copy_bmp_header(FILE *src , FILE *stego){
     fseek(src,0,SEEK_SET);
     char str[54];
@@ -115,6 +114,8 @@ Status copy_bmp_header(FILE *src , FILE *stego){
     fwrite(str,sizeof(char),54,stego);
     return e_success;
 }
+
+//encode input data of 1 byte to 8 bits into lbs of 8 bytes of data
 Status encode_byte_to_lsb(char data,char *image_data){
     unsigned int mask = 1 << 7 ;
     for(int i = 0 ; i < 8 ; i++ ){
@@ -122,6 +123,7 @@ Status encode_byte_to_lsb(char data,char *image_data){
         mask=mask>>1;
     }
 }
+// function to encode data of 'size' in bytes to stego image
 Status encode_data_to_image(const char *data, int size, FILE *fptr_src_image, FILE *fptr_stego_image, EncodeInfo *encInfo){
     
     for(int i = 0 ; i < size ; i++){
@@ -131,10 +133,13 @@ Status encode_data_to_image(const char *data, int size, FILE *fptr_src_image, FI
     }
     return e_success;
 }
+// function to encode magic string
 Status encode_magic_string(const char *magic_string,EncodeInfo *encInfo){
     encode_data_to_image(magic_string,strlen(magic_string),encInfo->fptr_src_image,encInfo->fptr_stego_image,encInfo);
     return e_success;
 }
+
+// function to encode size to lsb 32 bits of int data into 32 bytes of image data
 Status encode_size_to_lsb(char *str, int size){
     unsigned int mask = 1 << 31;
     for(int i = 0 ; i < 32 ; i ++){
@@ -142,6 +147,8 @@ Status encode_size_to_lsb(char *str, int size){
         mask = mask>>1;
     }
 }
+
+// function to encode size into the stogo image 
 Status encode_size(int size, FILE *fptr_src_image, FILE *fptr_stego_image){
     char str[32];
     fread(str,sizeof(char),32,fptr_src_image);
@@ -149,11 +156,15 @@ Status encode_size(int size, FILE *fptr_src_image, FILE *fptr_stego_image){
     fwrite(str,sizeof(char),32,fptr_stego_image);
     return e_success;
 }
+
+// function to encode secret file extension 
 Status encode_secret_file_extn(const char *file_ext,EncodeInfo *encInfo){
     file_ext = ".txt";
+    // pass text, length of text to encode into image
     encode_data_to_image(file_ext,strlen(file_ext),encInfo->fptr_src_image,encInfo->fptr_stego_image,encInfo);
     return e_success;
 }
+// function to encode secret file size which is 32 bit int data to be stored in 32 bytes of image data lsb
 Status encode_secret_file_size(long file_size,EncodeInfo *encInfo){
     char str[32];
     fread(str,sizeof(char),32,encInfo->fptr_src_image);
@@ -161,26 +172,35 @@ Status encode_secret_file_size(long file_size,EncodeInfo *encInfo){
     fwrite(str,sizeof(char),32,encInfo->fptr_stego_image);
     return e_success;
 }
+//encode secret file data into the stego image
 Status encode_secret_file_data(EncodeInfo *encInfo){
     char ch;
     fseek(encInfo->fptr_secret,0,SEEK_SET);
     for(int i=0;i<encInfo->size_secret_file;i++){
+        // take 8 bytes of image data
         fread(encInfo->image_data,sizeof(char),8,encInfo->fptr_src_image);
+        // take 1 char from secret text file
         fread(&ch,sizeof(char),1,encInfo->fptr_secret);
+        //encode 8 bits of char into 8 bytes of image data
         encode_byte_to_lsb(ch,encInfo->image_data);
+        // write image data to stego image
         fwrite(encInfo->image_data,sizeof(char),8,encInfo->fptr_stego_image);   
     }
     return e_success;
 }
+// function to copy remaining image data
 Status copy_remaining_img_data(FILE *fptr_src_img,FILE *fptr_stego_img){
+
     char ch;
+    // while freas is greater than zero or reads a valid pointer
     while(fread(&ch,1,1,fptr_src_img)>0){
+        // write remiaining data to stego image
         fwrite(&ch,1,1,fptr_stego_img);
     }
     return e_success;
 }
+// primary encoding function
 Status do_encoding(EncodeInfo *encInfo){
-    //open files
     if(open_files(encInfo)==e_success){
         printf("Opened File Successfully.\n");
         printf("Started Encoding...\n");
@@ -200,14 +220,18 @@ Status do_encoding(EncodeInfo *encInfo){
                                     printf("Encoded secret data successfully ;)\n");
                                     if(copy_remaining_img_data(encInfo->fptr_src_image,encInfo->fptr_stego_image)==e_success){
                                         printf("Copied remaining data successfully.\n");
+                                        return e_success;
                                     }else{
                                         printf("COPYING FAILED : REMAINING IMAGE.\n");
+                                        return e_failure;
                                     }
                                 }else{
                                     printf("Encoding FAILED : SECRET FILE DATA\n");
+                                    return e_failure;
                                 }
                             }else{
                                 printf("Encoding FAILED : SECRET FILE SIZE\n");
+                                return e_failure;
                             }
                         }else{
                             printf("Encoding FAILED : EXTENSION\n");
@@ -233,6 +257,4 @@ Status do_encoding(EncodeInfo *encInfo){
         printf("File Opening Unsuccessfull\n");
         return e_failure;
     }
-
-    return e_success;
 }

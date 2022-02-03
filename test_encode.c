@@ -3,7 +3,40 @@
 #include "types.h"
 #include <string.h>
 #include "decode.h"
+/*
+Name : Rohit Prakash
+Date : 25th January 2022
 
+/C-Project-1/4-SkeletonCode$ ./a.out -e beautiful.bmp secret.txt stego.bmp
+Selected Encoding
+Read and Validated successfully...
+Opened File Successfully.
+Started Encoding...
+Encoding the secret data...
+Copied Header Successfully.
+Encoded Magic String Successfully.
+Encoded secret file extension size successfully.
+Encoded secret file extension successfully.
+Encoded secret file size Successflly.
+Encoded secret data successfully ;)
+Copied remaining data successfully.
+Completed Encoding
+
+/C-Project-1/4-SkeletonCode$ ./a.out -d stego.bmp output.txt
+Selected Decoding
+Read and Validated Successfully...
+File Opened Successfully
+Started Decoding...
+Decoded Magic String Successfully
+Enter the magic string : 
+> #*
+Magic String Matched !!
+Decoded extension size successfully.
+Decoded extension succesfully
+Decoded file size successfully
+Completed Decoding
+
+*/
 int main(int argc,char *argv[])
 {
     uint img_size;
